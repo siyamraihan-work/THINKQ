@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: thinkq-frontend-nginx
+  namespace: thinkq
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        location /auth/ {
+            proxy_pass http://nginx-gateway.thinkq.svc.cluster.local;
+        }
+
+        location /users/ {
+            proxy_pass http://nginx-gateway.thinkq.svc.cluster.local;
+        }
+
+        location /admin/ {
+            proxy_pass http://nginx-gateway.thinkq.svc.cluster.local;
+        }
+
+        location /tickets/ {
+            proxy_pass http://nginx-gateway.thinkq.svc.cluster.local;
+        }
+
+        location /analytics/ {
+            proxy_pass http://nginx-gateway.thinkq.svc.cluster.local;
+        }
+
+        location /events/ {
+            proxy_pass http://nginx-gateway.thinkq.svc.cluster.local;
+            proxy_http_version 1.1;
+            proxy_set_header Connection '';
+            chunked_transfer_encoding off;
+            proxy_buffering off;
+            proxy_cache off;
+        }
+
+        location /queue/ {
+            proxy_pass http://nginx-gateway.thinkq.svc.cluster.local;
+            proxy_http_version 1.1;
+            proxy_set_header Connection '';
+            chunked_transfer_encoding off;
+            proxy_buffering off;
+            proxy_cache off;
+        }
+
+        location /student/ {
+            proxy_pass http://nginx-gateway.thinkq.svc.cluster.local;
+        }
+    }

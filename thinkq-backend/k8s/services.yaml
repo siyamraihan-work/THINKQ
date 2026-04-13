@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: helpdesk
+spec:
+  selector: { app: postgres }
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: helpdesk
+spec:
+  selector: { app: redis }
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-service
+  namespace: helpdesk
+spec:
+  selector: { app: data-service }
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-user-service
+  namespace: helpdesk
+spec:
+  selector: { app: auth-user-service }
+  ports:
+    - port: 3001
+      targetPort: 3001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service
+  namespace: helpdesk
+spec:
+  selector: { app: admin-service }
+  ports:
+    - port: 3002
+      targetPort: 3002
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tickets-service
+  namespace: helpdesk
+spec:
+  selector: { app: tickets-service }
+  ports:
+    - port: 3003
+      targetPort: 3003
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifications-service
+  namespace: helpdesk
+spec:
+  selector: { app: notifications-service }
+  ports:
+    - port: 3004
+      targetPort: 3004
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: helpdesk
+spec:
+  type: LoadBalancer
+  selector: { app: nginx }
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: helpdesk
+spec:
+  selector: { app: analytics-service }
+  ports:
+    - port: 3005
+      targetPort: 3005

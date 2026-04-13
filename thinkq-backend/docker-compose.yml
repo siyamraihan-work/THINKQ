@@ -1,0 +1,153 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [backend]
+
+  redis:
+    image: redis:7-alpine
+    command: ["sh", "-c", "redis-server --requirepass $$(cat /run/secrets/redis_password)"]
+    secrets:
+      - redis_password
+    networks: [backend]
+
+  data-service:
+    build: ./data-service
+    env_file: .env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD_FILE: /run/secrets/postgres_password
+      INTERNAL_API_KEY_FILE: /run/secrets/internal_api_key
+      DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED}
+      DEV_ADMIN_NAME: ${DEV_ADMIN_NAME}
+      DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL}
+      DEV_ADMIN_OID: ${DEV_ADMIN_OID}
+      DEV_TEACHER_NAME: ${DEV_TEACHER_NAME}
+      DEV_TEACHER_EMAIL: ${DEV_TEACHER_EMAIL}
+      DEV_TEACHER_OID: ${DEV_TEACHER_OID}
+      DEV_STUDENT_NAME: ${DEV_STUDENT_NAME}
+      DEV_STUDENT_EMAIL: ${DEV_STUDENT_EMAIL}
+      DEV_STUDENT_OID: ${DEV_STUDENT_OID}
+    depends_on: [postgres]
+    secrets:
+      - postgres_password
+      - internal_api_key
+    networks: [backend]
+
+  auth-user-service:
+    build: ./auth-user-service
+    env_file: .env
+    environment:
+      PORT: 3001
+      DATA_SERVICE_URL: http://data-service:8080
+      REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379
+      INTERNAL_API_KEY_FILE: /run/secrets/internal_api_key
+      SESSION_SECRET_FILE: /run/secrets/session_secret
+      SAML_CERT_PATH: /run/secrets/saml_cert
+      FRONTEND_BASE_URL: http://host.docker.internal:5173
+      LOGIN_PATH: /login
+      UNAUTHORIZED_PATH: /unauthorized
+      POST_LOGIN_PATH: /
+    depends_on: [data-service, redis]
+    secrets:
+      - internal_api_key
+      - session_secret
+      - saml_cert
+    networks: [backend]
+
+  admin-service:
+    build: ./admin-service
+    env_file: .env
+    environment:
+      PORT: 3002
+      DATA_SERVICE_URL: http://data-service:8080
+      REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379
+      INTERNAL_API_KEY_FILE: /run/secrets/internal_api_key
+    depends_on: [data-service, redis]
+    secrets:
+      - internal_api_key
+    networks: [backend]
+
+  tickets-service:
+    build: ./tickets-service
+    env_file: .env
+    environment:
+      PORT: 3003
+      DATA_SERVICE_URL: http://data-service:8080
+      REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379
+      INTERNAL_API_KEY_FILE: /run/secrets/internal_api_key
+    depends_on: [data-service, redis]
+    secrets:
+      - internal_api_key
+    networks: [backend]
+
+  notifications-service:
+    build: ./notifications-service
+    env_file: .env
+    environment:
+      PORT: 3004
+      TICKETS_SERVICE_URL: http://tickets-service:3003
+      REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379
+      INTERNAL_API_KEY_FILE: /run/secrets/internal_api_key
+    depends_on: [tickets-service, redis]
+    secrets:
+      - internal_api_key
+    networks: [backend]
+
+  analytics-service:
+    build: ./analytics-service
+    env_file: .env
+    environment:
+      REDIS_URL: redis://default:${REDIS_PASSWORD}@redis:6379
+      TICKETS_SERVICE_URL: http://tickets-service:3003
+      INTERNAL_API_KEY_FILE: /run/secrets/internal_api_key
+      EXPORT_DIR: /app/exports
+    depends_on: [tickets-service, redis]
+    secrets:
+      - internal_api_key
+    volumes:
+      - analytics_exports:/app/exports
+    networks: [backend]
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - auth-user-service
+      - admin-service
+      - tickets-service
+      - notifications-service
+      - analytics-service
+    networks: [backend]
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  internal_api_key:
+    file: ./secrets/internal_api_key.txt
+  session_secret:
+    file: ./secrets/session_secret.txt
+  saml_cert:
+    file: ./secrets/idp-signing-2023.pem
+
+volumes:
+  postgres_data:
+  analytics_exports:
+
+networks:
+  backend:
